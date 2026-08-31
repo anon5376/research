@@ -155,10 +155,14 @@ def evaluate(
     train_np = train.to_numpy()
     test_np = test.to_numpy()
     basal_cols: list[str] = []
+    pca_mean = pca_components = None
+    pca_genes: list[str] = []
     if centroids is not None:
         from tahoe.basal import attach_basal_pcs
 
-        frame, basal_cols, _, _ = attach_basal_pcs(frame, centroids, train, k=basal_k)
+        frame, basal_cols, pca_mean, pca_components, pca_genes = attach_basal_pcs(
+            frame, centroids, train, k=basal_k
+        )
 
     x_geno, names = design_matrix(frame)
     drug_idx = [names.index(col) for col in DRUG_CLASS_COLS] + [names.index("log10_um")]
@@ -190,8 +194,11 @@ def evaluate(
         x_geno_basal = np.hstack([x_geno, basal_mat])
         models["basal_drug_ridge"] = GenotypeRidge(lam=lam).fit(x_basal_drug[train_np], y_train)
         models["genotype_basal_ridge"] = GenotypeRidge(lam=lam).fit(x_geno_basal[train_np], y_train)
+        x_id_basal = np.hstack([x_id, basal_mat])
+        models["identity_basal_ridge"] = GenotypeRidge(lam=lam).fit(x_id_basal[train_np], y_train)
         predict_x["basal_drug_ridge"] = x_basal_drug
         predict_x["genotype_basal_ridge"] = x_geno_basal
+        predict_x["identity_basal_ridge"] = x_id_basal
         geno_basal_names = names + basal_cols
 
     metrics: dict[str, object] = {
@@ -207,6 +214,7 @@ def evaluate(
         "dabrafenib_mapk_test": _dabrafenib_class_means(frame, test),
         "dabrafenib_mapk_all": _dabrafenib_class_means(frame, pd.Series(True, index=frame.index)),
         "train_mse": {},
+        "pca_genes": pca_genes,
     }
     for label, model in models.items():
         pred_test = model.predict(predict_x[label][test_np])
@@ -223,6 +231,33 @@ def evaluate(
         assert isinstance(both, GenotypeRidge)
         metrics["ridge_basal"] = both
         metrics["genotype_basal_feature_names"] = geno_basal_names
+        metrics["pca_mean"] = pca_mean
+        metrics["pca_components"] = pca_components
+        basal_pred = models["basal_drug_ridge"].predict(predict_x["basal_drug_ridge"][test_np])
+        geno_pred = both.predict(predict_x["genotype_basal_ridge"][test_np])
+        identity_pred = models["identity_ridge"].predict(predict_x["identity_ridge"][test_np])
+        mse_basal = np.mean((y_test - basal_pred) ** 2, axis=0)
+        mse_geno = np.mean((y_test - geno_pred) ** 2, axis=0)
+        mse_id = np.mean((y_test - identity_pred) ** 2, axis=0)
+        benefit = mse_basal - mse_geno
+        order = np.argsort(-benefit)
+        top = [
+            {
+                "gene": genes[i],
+                "mse_basal_drug": float(mse_basal[i]),
+                "mse_genotype_basal": float(mse_geno[i]),
+                "mse_identity": float(mse_id[i]),
+                "genotype_benefit": float(benefit[i]),
+                "mapk": genes[i] in MAPK_OUTPUT_GENES,
+            }
+            for i in order[:25]
+        ]
+        metrics["genotype_helps_genes"] = top
+        mapk_idx = _mapk_index(genes)
+        metrics["mapk_genotype_benefit"] = {
+            genes[i]: float(benefit[i]) for i in mapk_idx
+        }
+        metrics["n_genes_genotype_helps"] = int((benefit > 0).sum())
     return metrics
 
 
@@ -303,12 +338,38 @@ def main(argv: list[str] | None = None) -> int:
     result = evaluate(frame, genes, lam=args.lam, seed=args.seed, centroids=centroids)
     ridge = result.pop("ridge")
     ridge_basal = result.pop("ridge_basal", None)
+    pca_mean = result.pop("pca_mean", None)
+    pca_components = result.pop("pca_components", None)
+    pca_genes = result.pop("pca_genes", [])
     default_name = "genotype_ridge_synthetic.npz" if args.synthetic else "genotype_ridge.npz"
     out_model = args.out or (args.cache_dir / default_name)
     save_ridge(out_model, ridge, genes, FEATURE_NAMES)
-    if ridge_basal is not None:
-        extra_names = result.get("genotype_basal_feature_names") or FEATURE_NAMES
-        save_ridge(out_model.with_name(out_model.stem + "_basal.npz"), ridge_basal, genes, list(extra_names))
+    if ridge_basal is not None and pca_mean is not None and pca_components is not None:
+        from tahoe.bundle import PerturbationModel
+
+        extra_names = list(result.get("genotype_basal_feature_names") or FEATURE_NAMES)
+        assert ridge_basal.weights is not None
+        save_ridge(out_model.with_name(out_model.stem + "_basal.npz"), ridge_basal, genes, extra_names)
+        bundle = PerturbationModel(
+            genes=genes,
+            feature_names=extra_names,
+            weights=ridge_basal.weights,
+            pca_mean=np.asarray(pca_mean),
+            pca_components=np.asarray(pca_components),
+            pca_genes=list(pca_genes),
+            lam=ridge_basal.lam,
+        )
+        if args.synthetic:
+            bundle_path = out_model.with_name("perturbation_synthetic.npz")
+        elif args.genes == "hvg" and args.out is None:
+            bundle_path = Path("models") / "perturbation.npz"
+        else:
+            bundle_path = (args.out or out_model).with_name("perturbation.npz")
+        bundle.save(bundle_path)
+        print(f"wrote {bundle_path}")
+        if result.get("genotype_helps_genes"):
+            print("genotype helps most:", [g["gene"] for g in result["genotype_helps_genes"][:8]])
+            print("MAPK genotype benefit:", result.get("mapk_genotype_benefit"))
     metrics_path = out_model.with_suffix(".json")
     payload = {"source": source, **_jsonable({k: v for k, v in result.items()})}
     metrics_path.write_text(json.dumps(payload, indent=2, default=str))

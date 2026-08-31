@@ -86,4 +86,6 @@ On a 10-line holdout, concentration ≥ 0.5 µM:
 
 `uv run tahoe-train --plates all --min-um 0.5` writes local cache weights. Public copy: `models/genotype_ridge.npz`. Write-up: `docs/results.md`.
 
-Identity ridge wins on **train** (MSE 0.00429) and loses to genotype on **held-out lines** (0.00425 vs 0.00381). Basal DMSO PCs do not beat the drug mean on the MAPK panel. On the full 2k HVG vector, genotype does not beat the drug mean — driver dependence is local to RAS/RAF output genes.
+The public predictor is `PerturbationModel` in `models/perturbation.npz`: DMSO HVG (8 PCs) + drug + KRAS/BRAF/TP53 → 2000-gene delta. `uv run tahoe-train --plates all --min-um 0.5 --genes hvg`. Write-up: `docs/results.md`.
+
+On a 10-line holdout, **identity + basal** is the best training fit (MSE 0.00129) and worse than basal-only on unseen lines (0.00190 vs 0.00172). **Genotype + basal** is the best MAPK-output fit (0.00079) and helps 399/2000 genes (EGR1 first). Bulk HVG prefers basal + drug without genotype.

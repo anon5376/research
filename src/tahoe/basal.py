@@ -61,7 +61,7 @@ def attach_basal_pcs(
     train_mask: pd.Series,
     *,
     k: int = 8,
-) -> tuple[pd.DataFrame, list[str], np.ndarray, np.ndarray]:
+) -> tuple[pd.DataFrame, list[str], np.ndarray, np.ndarray, list[str]]:
     """Fit DMSO HVG PCA on training (cell, plate) pairs; attach PCs to every row."""
     gene_cols = [c for c in centroids.columns if c not in {"cell_id", "plate", "cell_line_id"}]
     keys = frame.loc[train_mask, ["cell_id", "plate"]].drop_duplicates()
@@ -76,4 +76,4 @@ def attach_basal_pcs(
     encoded["plate"] = centroids["plate"].to_numpy()
     merged = frame.merge(encoded, on=["cell_id", "plate"], how="left")
     merged[names] = merged[names].fillna(0.0)
-    return merged, names, mean, components
+    return merged, names, mean, components, gene_cols

@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from tahoe.basal import pca_fit, pca_transform
+from tahoe.bundle import PerturbationModel
 from tahoe.features import FEATURE_NAMES, design_matrix, drug_class_flags
 from tahoe.model import identity_onehot
 from tahoe.slice import canonicalize_drug
@@ -99,6 +100,60 @@ def test_synthetic_ridge_beats_drug_mean_and_roundtrips(tmp_path: Path) -> None:
     weights = result["interaction_weights"]
     assert weights["braf_v600e__is_raf"] < weights["kras_g12__is_raf"]
     np.testing.assert_allclose(loaded.predict(design_matrix(frame)[0]), ridge.predict(design_matrix(frame)[0]))
+
+
+def test_perturbation_model_uses_basal_and_drivers(tmp_path: Path) -> None:
+    rng = np.random.default_rng(1)
+    pca_genes = ["G1", "G2", "G3", "G4"]
+    mean = np.zeros(4)
+    components = np.eye(4)[:2]
+    genes = ["DUSP4", "EGR1"]
+    feature_names = list(FEATURE_NAMES) + ["basal_pc0", "basal_pc1"]
+    # Hand-built weights: last two features (PCs) plus braf×raf and bias.
+    weights = np.zeros((len(feature_names) + 1, 2))
+    weights[FEATURE_NAMES.index("braf_v600e__is_raf"), :] = -1.5
+    weights[len(FEATURE_NAMES), :] = 0.4  # basal_pc0
+    weights[-1, :] = -0.2
+    model = PerturbationModel(
+        genes=genes,
+        feature_names=feature_names,
+        weights=weights,
+        pca_mean=mean,
+        pca_components=components,
+        pca_genes=pca_genes,
+        lam=1.0,
+    )
+    path = tmp_path / "perturbation.npz"
+    model.save(path)
+    loaded = PerturbationModel.load(path)
+    drivers_braf = {
+        "has_kras": False,
+        "has_braf": True,
+        "has_tp53": True,
+        "kras_g12": False,
+        "braf_v600e": True,
+        "tp53_lof": True,
+    }
+    high = pd.Series({"G1": 2.0, "G2": 0.0, "G3": 0.0, "G4": 0.0})
+    low = pd.Series({"G1": 0.0, "G2": 0.0, "G3": 0.0, "G4": 0.0})
+    pred_high = loaded.predict(basal=high, drug="Dabrafenib", concentration=0.5, drivers=drivers_braf)
+    pred_low = loaded.predict(basal=low, drug="Dabrafenib", concentration=0.5, drivers=drivers_braf)
+    pred_kras = loaded.predict(
+        basal=low,
+        drug="Dabrafenib",
+        concentration=0.5,
+        drivers={
+            "has_kras": True,
+            "has_braf": False,
+            "has_tp53": False,
+            "kras_g12": True,
+            "braf_v600e": False,
+            "tp53_lof": False,
+        },
+    )
+    assert pred_high.mean() > pred_low.mean()
+    assert pred_low.mean() < pred_kras.mean()
+    _ = rng
 
 
 def test_identity_onehot_zeros_unseen_lines() -> None:
