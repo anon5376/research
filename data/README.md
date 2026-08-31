@@ -1,20 +1,8 @@
-# Local challenge data
+# Local data
 
-Download the 2026 controls bundle here. Nothing in this directory is committed except this file.
+Large datasets live here and are not committed. Stream when you can; download subsets, not the whole Tahoe-100M dump (~429 GB), unless you have the disk.
 
 ```bash
-uv tool install vcc-cli
-vcc datasets download controls -d data
-unzip -o -j data/vcc_2026_controls.zip \
-  "gene_names.csv" "pert_counts.csv" \
-  "context_A.h5ad" "context_B.h5ad" "context_C.h5ad" \
-  -d data
+# example: stream Tahoe-100M (do not download by default)
+# python -c "from datasets import load_dataset; ds = load_dataset('tahoebio/Tahoe-100M', streaming=True, split='train'); print(next(iter(ds)))"
 ```
-
-Expected files after unpacking:
-
-- `context_A.h5ad`, `context_B.h5ad`, `context_C.h5ad` — 18,400 non-targeting control cells each
-- `gene_names.csv` — 18,533 gene symbols, headerless, fixed order
-- `pert_counts.csv` — 300 CRISPRi targets as gene symbols (one column)
-
-Keep API tokens out of this folder. Use `.env` or `vcc login --token-stdin`.

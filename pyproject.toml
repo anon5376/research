@@ -1,7 +1,7 @@
 [project]
-name = "virtual-cell-challenge"
+name = "research"
 version = "0.1.0"
-description = "Personal entry for the 2026 Arc Institute Virtual Cell Challenge"
+description = "Personal research notes and experiments"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
