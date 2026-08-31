@@ -1,0 +1,153 @@
+{
+  "source": "cell_eval plates [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14] genes=mapk, conc>=0.5 uM, basal DMSO PCA",
+  "n_train": 1028,
+  "n_test": 258,
+  "n_train_lines": 40,
+  "n_test_lines": 10,
+  "holdout_ids": [
+    "CVCL_0069",
+    "CVCL_0397",
+    "CVCL_0504",
+    "CVCL_1055",
+    "CVCL_1056",
+    "CVCL_1098",
+    "CVCL_1478",
+    "CVCL_1495",
+    "CVCL_1693",
+    "CVCL_1717"
+  ],
+  "genes": [
+    "DUSP4",
+    "SPRY1",
+    "EGR1",
+    "EGR4",
+    "CCND2",
+    "IER3",
+    "TRIB2"
+  ],
+  "feature_names": [
+    "has_kras",
+    "has_braf",
+    "has_tp53",
+    "kras_g12",
+    "braf_v600e",
+    "tp53_lof",
+    "is_raf",
+    "is_ras",
+    "is_mek",
+    "log10_um",
+    "braf_v600e__is_raf",
+    "kras_g12__is_ras",
+    "kras_g12__is_raf",
+    "has_kras__is_mek",
+    "braf_v600e__is_mek",
+    "tp53_lof__is_raf"
+  ],
+  "basal_cols": [
+    "basal_pc0",
+    "basal_pc1",
+    "basal_pc2",
+    "basal_pc3",
+    "basal_pc4",
+    "basal_pc5",
+    "basal_pc6",
+    "basal_pc7"
+  ],
+  "models": {
+    "zero": {
+      "mse": 0.013010994935743257,
+      "pearson": null,
+      "mapk_mse": 0.0033058834524297273
+    },
+    "drug_mean": {
+      "mse": 0.0044315082742495135,
+      "pearson": 0.8380440194372365,
+      "mapk_mse": 0.0008698536173399642
+    },
+    "genotype_ridge": {
+      "mse": 0.0038100645279812192,
+      "pearson": 0.8244986487580297,
+      "mapk_mse": 0.0008022502543569086
+    },
+    "identity_ridge": {
+      "mse": 0.0042473660131912986,
+      "pearson": 0.8504055790596703,
+      "mapk_mse": 0.0008168216858196534
+    },
+    "basal_drug_ridge": {
+      "mse": 0.004525996977998319,
+      "pearson": 0.8476185851376875,
+      "mapk_mse": 0.0008856991362957285
+    },
+    "genotype_basal_ridge": {
+      "mse": 0.00409196841701229,
+      "pearson": 0.7996260442647277,
+      "mapk_mse": 0.0007862104037298057
+    }
+  },
+  "dabrafenib_mapk_test": {
+    "BRAF_V600E": -0.050102242009312924,
+    "KRAS_GOF": -0.033043434642852004,
+    "RAS_RAF_WT": -0.01737263374234343,
+    "other": -0.027458943804992534
+  },
+  "dabrafenib_mapk_all": {
+    "BRAF_V600E": -0.06402743912547357,
+    "KRAS_GOF": -0.025096515392299564,
+    "RAS_RAF_WT": -0.022892391237843836,
+    "other": -0.02246892993046934
+  },
+  "train_mse": {
+    "zero": 0.016030890173320596,
+    "drug_mean": 0.007315469659240945,
+    "genotype_ridge": 0.006348438306244566,
+    "identity_ridge": 0.004287411682758448,
+    "basal_drug_ridge": 0.006383522789281226,
+    "genotype_basal_ridge": 0.005947366342603253
+  },
+  "interaction_weights": {
+    "has_kras": 0.0032724394639064023,
+    "has_braf": 0.021686626818280316,
+    "has_tp53": 0.001240138981503863,
+    "kras_g12": -0.01768267557879698,
+    "braf_v600e": -0.03012214535352915,
+    "tp53_lof": 0.0012401389814986029,
+    "is_raf": 0.02527125566037281,
+    "is_ras": -0.009111434573870624,
+    "is_mek": -0.016159821086556454,
+    "log10_um": -0.016894379556656805,
+    "braf_v600e__is_raf": -0.03225285397140396,
+    "kras_g12__is_ras": -0.0037679134909236888,
+    "kras_g12__is_raf": 0.012004591438602942,
+    "has_kras__is_mek": -0.0009271519725046282,
+    "braf_v600e__is_mek": -0.010968986200896907,
+    "tp53_lof__is_raf": -0.017593139661254534,
+    "bias": -0.03522503349188623
+  },
+  "genotype_basal_feature_names": [
+    "has_kras",
+    "has_braf",
+    "has_tp53",
+    "kras_g12",
+    "braf_v600e",
+    "tp53_lof",
+    "is_raf",
+    "is_ras",
+    "is_mek",
+    "log10_um",
+    "braf_v600e__is_raf",
+    "kras_g12__is_ras",
+    "kras_g12__is_raf",
+    "has_kras__is_mek",
+    "braf_v600e__is_mek",
+    "tp53_lof__is_raf",
+    "basal_pc0",
+    "basal_pc1",
+    "basal_pc2",
+    "basal_pc3",
+    "basal_pc4",
+    "basal_pc5",
+    "basal_pc6",
+    "basal_pc7"
+  ]
+}
